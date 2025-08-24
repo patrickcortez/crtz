@@ -1,0 +1,108 @@
+[AUTHOR: PATRICK ANDREW CORTEZ]
+
+- crtz dialogue scripting language.
+
+- c based
+
+#Usage:
+
+Metadata
+
+npc "Abigail";desc "Your sister, wearing a black dress.";
+desc "Your sister, wearing a black dress.";
+
+Variables
+int health = 60;
+int affection = 0;
+int coins = 3;
+
+Classes (OOP):
+
+class Hero {
+    int health = 100;
+    void heal(amount) {
+        set health = health + amount;
+        print("Healed!");
+    }
+}
+
+Object Instantiation:
+
+new Hero player;
+
+Nodes (dialogue branches):
+
+node B1 {
+    line "[Abigail]: You look tired from your journey.";
+    choice 1 : "[@You]: I'm fine." -> B2;
+    choice 2 : "[@You]: I'm hurt." -> B3;
+}
+
+
+Choices:
+
+choice 1 : "[@You]: I'm fine." -> B2;
+choice 2 : "[@You]: I'm hurt." -> B3;
+
+Actions
+Set variable or field:
+set health = health - 10;
+Signal:
+signal affection_score = affection;
+Conditional jump:
+if (health <= 50) goto B4;
+Unconditional jump:
+goto B5;
+End node:
+end;
+Print statement:
+print("Hello!");
+Method call:
+player.heal(10);
+
+
+
+Comment:
+// This is a comment
+
+String Interpolation:
+line "[@You]: My health is ${health}";
+
+Example crtz Program:
+
+npc "Abigail";
+desc "Your sister, wearing a black dress.";
+
+int health = 60;
+int affection = 0;
+
+node B1 {
+    line "[Abigail]: You look tired from your journey.";
+    choice 1 : "[@You]: I'm fine." -> B2;
+    choice 2 : "[@You]: I'm hurt." -> B3;
+}
+
+node B2 {
+    line "[Abigail]: That's good to hear.";
+    set affection = affection + 1;
+    signal affection_score = affection;
+    end;
+}
+
+node B3 {
+    line "[Abigail]: Oh no, are you okay?";
+    if (health <= 50) goto B4;
+    goto B5;
+}
+
+node B4 {
+    line "[Abigail]: Sit down, I will patch you up.";
+    set affection = affection + 5;
+    end;
+}
+
+node B5 {
+    line "[Abigail]: You look scratched but fine.";
+    set affection = affection + 2;
+    end;
+}
