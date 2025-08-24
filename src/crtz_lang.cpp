@@ -1,5 +1,5 @@
 // crtz_lang.cpp
-#include <bits/stdc++.h>
+#include "crtz.h"
 #include "crtz_lang.hpp"
 using namespace std;
 
