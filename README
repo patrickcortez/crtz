@@ -4,6 +4,56 @@ Overview:
 
 CRTZ -  is a scripting language designed for creating interactive dialogues, narratives, and text-based adventures. It supports object-oriented programming concepts, branching dialogues, variables, and includes a built-in debugger and its developed by a 3rd year computer engineering student named Patrick Andrew Cortez
 
+Dependencies:
+
+The image driver uses SDl2, and you need to manually download SDL2, and here's how:
+
+Linux:
+
+sudo apt install libsdl2-dev libsdl2-image-dev
+
+then compile:
+
+g++ -std=c++17 -Iinclude     src/crtz_lang.cpp src/ImageDriver.cpp     -o crtz_interpreter     -lSDL2 -lSDL2_image
+---------------
+Windows:
+
+Use Chocolatey to install sdl2, its basically a windows package manager.
+
+Install Chocolatey:
+
+Open PowerShell as Administrator.
+
+Run the following command:
+
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+Install SDL2 and SDL2_image via Chocolatey:
+
+choco install sdl2
+
+choco install sdl2-image
+
+Then Compile:
+
+# Navigate to your project folder in PowerShell
+cd path\to\crtz
+
+# Compile using g++ (adjust paths if needed)
+g++ -std=c++17 -Iinclude src\crtz_lang.cpp src\ImageDriver.cpp -o crtz_interpreter.exe -lSDL2 -lSDL2_image
+------------------------
+Mac os:
+
+brew install sdl2 sdl2_image
+
+then compile:
+
+g++ -std=c++17 -I/usr/local/include -Iinclude src/crtz_lang.cpp src/ImageDriver.cpp -o crtz_interpreter -L/usr/local/lib -lSDL2 -lSDL2_image
+
+
+
+
+
 Syntaxes: 
 
 
