@@ -4,7 +4,6 @@
 #include <sstream>
 #include <unordered_set>
 #include <cctype>
-#include "image_driver.hpp"
 #include <cstring>
 
 using namespace std;
@@ -21,7 +20,7 @@ using namespace std;
 
 // ----------------------- Lexer / Token -----------------------
 
-enum TokenKind { TK_EOF, TK_IDENT, TK_NUMBER, TK_STRING, TK_SYM, TK_STRING_DEC, TK_TRUE, TK_FALSE };
+enum TokenKind { TK_EOF, TK_IDENT, TK_NUMBER, TK_STRING, TK_SYM, TK_STRING_DEC, TK_TRUE, TK_FALSE,TK_PICTURE, TK_LOAD };
 
 struct Token {
     TokenKind kind;
@@ -98,6 +97,8 @@ struct Lexer {
             while (isalnum((unsigned char)peek()) || peek() == '_' || peek() == '.') id.push_back(get());
             if (id == "true") return Token(TK_TRUE, id, line);
             if (id == "false") return Token(TK_FALSE, id, line);
+            if (id == "picture") return Token(TK_PICTURE, id, line);
+            if (id == "load") return Token(TK_LOAD, id, line);
             return Token(TK_IDENT, id, line);
         }
 
@@ -342,10 +343,10 @@ public:
 
     void check(int line, const Program& prog) {
         if (stepping || breakpoints.count(line)) {
-            cout << "Breakpoint at line " << line << ". Type 'help' for commands. ;3" << endl;
+            cout << "Breakpoint at line " << line << ". Type 'help' for commands." << endl;
             string command;
             while (true) {
-                cout << "[crtz | debug mode]$ ";
+                cout << "> ";
                 getline(cin, command);
                 if (command == "step" || command == "s") {
                     step();
@@ -366,7 +367,7 @@ public:
                     printHelp();
                 } else if (command == "breakpoints" || command == "b") {
                     listBreakpoints();
-                } else if (command.rfind("break", 0) == 0 || command.rfind("b", 0) == 0) {
+                } else if (command.rfind("break", 0) == 0) {
                     string line_str;
                     size_t space_pos = command.find(' ');
                     if (space_pos != string::npos) {
@@ -381,7 +382,7 @@ public:
                     } else {
                         cout << "Usage: break <line>" << endl;
                     }
-                } else if (command.rfind("delete", 0) == 0 || command.rfind("d", 0) == 0) {
+                } else if (command.rfind("delete", 0) == 0) {
                     string line_str;
                     size_t space_pos = command.find(' ');
                     if (space_pos != string::npos) {
@@ -398,8 +399,6 @@ public:
                     }
                 } else if (command == "variables" || command == "v") {
                     listVariables(prog);
-                } else if (command == "quit" || command == "q") {
-                    exit(0);
                 } else {
                     cout << "Unknown command. Type 'help' for available commands." << endl;
                 }
@@ -469,9 +468,8 @@ private:
         cout << "  print (p) <var>:    Print the value of a variable." << endl;
         cout << "  variables (v):      List all variables." << endl;
         cout << "  break (b) <line>:   Set a breakpoint at the specified line." << endl;
-        cout << "  delete (d) <line>:  Remove a breakpoint at the specified line." << endl;
-        cout << "  breakpoints (b):    List all breakpoints." << endl;
-        cout << "  quit (q):           Exit the program." << endl;
+        cout << "  delete <line>:      Remove a breakpoint at the specified line." << endl;
+        cout << "  breakpoints:        List all breakpoints." << endl;
         cout << "  help (h):           Show this help message." << endl;
     }
 
@@ -502,7 +500,7 @@ public:
     }
     void parse() {
         while (tk.kind != TK_EOF) {
-            if (tk.kind == TK_IDENT) {
+            if (tk.kind == TK_IDENT || tk.kind == TK_PICTURE) {
                 if (tk.text == "npc") { parseNpc(); }
                 else if (tk.text == "desc") { parseDesc(); }
                 else if (tk.text == "int" || tk.text == "string" || tk.text == "match") { parseVarDecl(); }
@@ -510,6 +508,7 @@ public:
                 else if (tk.text == "class") { parseClass(); }
                 else if (tk.text == "new") { parseNewInstance(); }
                 else if (tk.text == "room") { parseRoom(); }
+                else if (tk.kind == TK_PICTURE) { parsePicture(); }
                 else {
                     cerr << "Error at line " << tk.line << ": Unknown top-level keyword: " << tk.text << "\n";
                     consume();
@@ -571,6 +570,74 @@ public:
         prog.rooms[roomName] = room;
         if (prog.currentRoom.empty()) prog.currentRoom = roomName;
     }
+
+    void parsePicture() {
+    consume(); // Consume the "picture" keyword
+    
+    if (tk.kind != TK_IDENT) {
+        cerr << "Error at line " << tk.line << ": picture expects an identifier\n";
+        return;
+    }
+    
+    string arrayName = tk.text;
+    consume();
+    
+    // Parse array size
+    if (!(tk.kind == TK_SYM && tk.text == "[")) {
+        cerr << "Error at line " << tk.line << ": expected '[' after picture name\n";
+        return;
+    }
+    consume();
+    
+    if (tk.kind != TK_NUMBER) {
+        cerr << "Error at line " << tk.line << ": expected number for array size\n";
+        return;
+    }
+    
+    int arraySize = tk.number;
+    consume();
+    
+    if (!(tk.kind == TK_SYM && tk.text == "]")) {
+        cerr << "Error at line " << tk.line << ": expected ']' after array size\n";
+        return;
+    }
+    consume();
+    
+    if (!(tk.kind == TK_SYM && tk.text == "=")) {
+        cerr << "Error at line " << tk.line << ": expected '=' after array declaration\n";
+        return;
+    }
+    consume();
+    
+    if (tk.kind != TK_LOAD) {
+        cerr << "Error at line " << tk.line << ": expected 'load' keyword\n";
+        return;
+    }
+    consume();
+    
+    if (!(tk.kind == TK_SYM && tk.text == "(")) {
+        cerr << "Error at line " << tk.line << ": expected '(' after load\n";
+        return;
+    }
+    consume();
+    
+    if (tk.kind != TK_STRING) {
+        cerr << "Error at line " << tk.line << ": expected string for folder path\n";
+        return;
+    }
+    
+    string folderPath = tk.text;
+    consume();
+    
+    if (!(tk.kind == TK_SYM && tk.text == ")")) {
+        cerr << "Error at line " << tk.line << ": expected ')' after folder path\n";
+        return;
+    }
+    consume();
+    
+    expectSym(";");
+    
+}
 
     void parseNpc() {
         consume();
@@ -833,74 +900,29 @@ public:
                             cerr << "Error at line " << tk.line << ": signal name expected\n";
                         }
                     } else if (kw == "if") {
-    consume();
-    if (!(tk.kind == TK_SYM && tk.text == "(")) { 
-        cerr << "Error at line " << tk.line << ": if requires (\n"; 
-    } else {
-        consume();
-    }
-    string cond;
-    while (!(tk.kind == TK_SYM && tk.text == ")") && tk.kind != TK_EOF) { 
-        cond += tk.text; 
-        consume(); 
-    }
-    expectSym(")");
-    
-    // Check for optional 'goto' keyword
-    bool hasGoto = false;
-    if (tk.kind == TK_IDENT) {
-    string target = tk.text; 
-    consume();
-    string elseTarget;
-    if (tk.kind == TK_IDENT && tk.text == "else") {
-        consume();
-        // Check for optional 'goto' after else
-        bool elseHasGoto = false;
-        if (tk.kind == TK_IDENT && tk.text == "goto") {
-            consume();
-            elseHasGoto = true;
-        }
-        if (tk.kind == TK_IDENT) {
-            elseTarget = tk.text; 
-            consume();
-        } else {
-            cerr << "Error at line " << tk.line << ": else expects a target\n";
-        }
-    }
-    expectSym(";");
-    node.actions.push_back("IF " + cond + " GOTO " + target + (elseTarget.empty() ? "" : " ELSE " + elseTarget));
-} else if (tk.kind == TK_IDENT && tk.text == "goto") {  // Add this condition
-    consume();
-    if (tk.kind == TK_IDENT) {
-        string target = tk.text; 
-        consume();
-        string elseTarget;
-        if (tk.kind == TK_IDENT && tk.text == "else") {
-            consume();
-            // Check for optional 'goto' after else
-            bool elseHasGoto = false;
-            if (tk.kind == TK_IDENT && tk.text == "goto") {
-                consume();
-                elseHasGoto = true;
-            }
-            if (tk.kind == TK_IDENT) {
-                elseTarget = tk.text; 
-                consume();
-            } else {
-                cerr << "Error at line " << tk.line << ": else expects a target\n";
-            }
-        }
-        expectSym(";");
-        node.actions.push_back("IF " + cond + " GOTO " + target + (elseTarget.empty() ? "" : " ELSE " + elseTarget));
-    } else {
-        cerr << "Error at line " << tk.line << ": goto expects a target\n";
-    }
- } else if (tk.kind == TK_IDENT && tk.text == "goto") {
-    // 'goto' written but no identifier target follows
-    cerr << "Error at line " << tk.line << ": goto expects a target\n";
-    consume(); // consume 'goto' to avoid infinite loop
-}
-} else if (kw == "goto") {
+                        consume();
+                        if (!(tk.kind == TK_SYM && tk.text == "(")) { cerr << "Error at line " << tk.line << ": if requires (\n"; }
+                        else consume();
+                        string cond;
+                        while (!(tk.kind == TK_SYM && tk.text == ")") && tk.kind != TK_EOF) { cond += tk.text; consume(); }
+                        expectSym(")");
+                        if (tk.kind == TK_IDENT && tk.text == "goto") { consume(); }
+                        else { cerr << "Error at line " << tk.line << ": if expects goto\n"; }
+                        if (tk.kind == TK_IDENT) {
+                            string target = tk.text; consume();
+                            string elseTarget;
+                            if (tk.kind == TK_IDENT && tk.text == "else") {
+                                consume();
+                                if (tk.kind == TK_IDENT && tk.text == "goto") { consume(); }
+                                else { cerr << "Error at line " << tk.line << ": else expects goto\n"; }
+                                if (tk.kind == TK_IDENT) {
+                                    elseTarget = tk.text; consume();
+                                } else { cerr << "Error at line " << tk.line << ": else goto target expected\n"; }
+                            }
+                            expectSym(";");
+                            node.actions.push_back("IF " + cond + " GOTO " + target + (elseTarget.empty() ? "" : " ELSE " + elseTarget));
+                        } else { cerr << "Error at line " << tk.line << ": goto target expected\n"; }
+                    } else if (kw == "goto") {
                         consume();
                         if (tk.kind == TK_IDENT) {
                             string target = tk.text; consume();
@@ -1201,14 +1223,12 @@ static void executeMethod(Program& prog,
 
 // ----------------------- Runtime / Runner -----------------------
 
-void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriver* imgDrv) {
+void runProgram(Program& prog, string& playerName, Debugger& debugger) {
     string current = prog.entry;
     unordered_map<string, int> vars = prog.vars;
     unordered_map<string, bool> boolVars = prog.boolVars;
     unordered_map<string, unordered_map<string, int>>& objects = prog.objects;
 
-    // NEW: picture arrays map (CRTZ picture arrays -> ImageDriver indices)
-    unordered_map<string, vector<int>> pictureArrays;
     
 
     if (!prog.npc.empty()) {
@@ -1289,7 +1309,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
         string jump_target;
         for (auto& act : node.actions) {
             if (act.rfind("SET ", 0) == 0) {
-                // ... (unchanged SET handling)
                 string rest = act.substr(4);
                 string name;
                 size_t p = 0;
@@ -1312,7 +1331,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
                     }
                 }
             } else if (act.rfind("SIGNAL ", 0) == 0) {
-                // ... (unchanged SIGNAL handling)
                 string rest = act.substr(7);
                 string name;
                 size_t p = 0;
@@ -1322,7 +1340,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
                 int val = evalExpressionString(expr, vars, boolVars, objects);
                 cout << "[SIGNAL] " << name << " = " << (val ? "true" : "false") << "\n";
             } else if (act.rfind("IF ", 0) == 0) {
-                // ... (unchanged IF handling)
                 size_t gpos = act.find(" GOTO ");
                 if (gpos == string::npos) continue;
                 string cond = act.substr(3, gpos - 3);
@@ -1345,7 +1362,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
                     break;
                 }
             } else if (act.rfind("GOTO ", 0) == 0) {
-                // ... (unchanged GOTO)
                 string target = act.substr(5);
                 current = target;
                 jumped = true;
@@ -1356,92 +1372,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
             } else if (act.rfind("STMT ", 0) == 0) {
                 string stmt = act.substr(5);
                 string s = trim(stmt);
-
-                // ---- NEW: handle picture array loading: picture img[SIZE] = load("folder")
-                if (s.rfind("picture ", 0) == 0) {
-                    // minimal parser: picture <name>[<size>] = load("folder")
-                    string rest = trim(s.substr(8));
-                    size_t br = rest.find('[');
-                    string arrName;
-                    if (br != string::npos) arrName = trim(rest.substr(0, br));
-                    else {
-                        cerr << "Invalid picture declaration: missing array name\n";
-                        continue;
-                    }
-                    size_t eq = rest.find('=');
-                    if (eq == string::npos) {
-                        cerr << "Invalid picture declaration: missing '='\n";
-                        continue;
-                    }
-                    string rhs = trim(rest.substr(eq + 1));
-                    // expect load("...") form
-                    if (rhs.rfind("load(", 0) == 0) {
-                        size_t q1 = rhs.find('"');
-                        size_t q2 = rhs.rfind('"');
-                        if (q1 != string::npos && q2 != string::npos && q2 > q1) {
-                            string folder = rhs.substr(q1 + 1, q2 - q1 - 1);
-                            if (!imgDrv) {
-                                cerr << "ImageDriver not available: cannot load pictures\n";
-                            } else {
-                                vector<int> indices = imgDrv->loadFolder(folder);
-                                pictureArrays[arrName] = indices;
-                                cout << "Loaded " << indices.size() << " images into " << arrName << "\n";
-                            }
-                        } else {
-                            cerr << "Invalid load() folder string\n";
-                        }
-                    } else {
-                        cerr << "Unsupported picture initializer: " << rhs << "\n";
-                    }
-                    continue; // next action
-                } else if (s.rfind("display(", 0) == 0) {
-                    size_t p = s.find('(');
-                    size_t q = s.rfind(')');
-                    if (p == string::npos || q == string::npos || q <= p) {
-                        cerr << "Invalid display(...) statement\n";
-                        continue;
-                    }
-                    string inner = trim(s.substr(p + 1, q - p - 1));
-                    
-                    size_t b = inner.find('[');
-    size_t rb = inner.rfind(']');
-    if (b != string::npos && rb != string::npos && rb > b) {
-        string arrName = trim(inner.substr(0, b));
-        string idxStr = trim(inner.substr(b + 1, rb - b - 1));
-        int idx = 0;
-        try { idx = stoi(idxStr); }
-        catch (...) { 
-            cerr << "display: invalid index: " << idxStr << "\n"; 
-            continue; 
-        }
-        if (pictureArrays.count(arrName) == 0) {
-            cerr << "display: unknown picture array: " << arrName << "\n";
-        } else {
-            auto &vec = pictureArrays[arrName];
-            if (idx < 0 || idx >= (int)vec.size()) {
-                cerr << "display: index out of range: " << idx << "\n";
-            } else {
-                int driverIndex = vec[idx];
-                if (!imgDrv) { 
-                    cerr << "ImageDriver not available: display failed\n"; 
-                } else {
-                    imgDrv->displayByIndex(driverIndex);
-                }
-            }
-        }
-    } else {
-        // If it's not an array index, treat it as a path
-        // The lexer has already stripped quotes, so we use the inner content directly
-        if (!imgDrv) {
-            cerr << "ImageDriver not available: display failed\n";
-        } else {
-            imgDrv->display(inner);
-        }
-    }
-                    continue;
-                }
-
-                // ---- existing inline-new and print handling ----
                 size_t dotp = s.find('.');
                 size_t paren = s.find('(');
                 if (dotp != string::npos && paren != string::npos && paren > dotp) {
@@ -1485,7 +1415,6 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
                     }
                 }
             } else if (act.rfind("SHOW ", 0) == 0) {
-                // ... (unchanged SHOW handling)
                 string text = act.substr(5);
                 size_t pos = 0;
                 // Handle variable substitutions
@@ -1530,30 +1459,17 @@ void runProgram(Program& prog, string& playerName, Debugger& debugger, ImageDriv
 
 namespace CRTZ {
 
-   void runSource(const std::string& source, const std::string& playerName, bool debug) {
-    Parser parser(source);
-    parser.parse();
-    Program prog = parser.getProgram();
-    string player = playerName;
-    Debugger debugger;
-    if (debug) {
-        debugger.step();
+    void runSource(const std::string& source, const std::string& playerName, bool debug) {
+        Parser parser(source);
+        parser.parse();
+        Program prog = parser.getProgram();
+        string player = playerName;
+        Debugger debugger;
+        if (debug) {
+            debugger.step();
+        }
+        runProgram(prog, player, debugger);
     }
-
-    // ImageDriver for display(...) and picture arrays
-    ImageDriver imgDrv;
-    bool imgOk = imgDrv.init();
-    if (!imgOk) {
-        std::cerr << "Warning: ImageDriver failed to initialize. Image commands will be disabled.\n";
-    }
-
-    // Pass imgDrv pointer (or nullptr if init failed)
-    runProgram(prog, player, debugger, imgOk ? &imgDrv : nullptr);
-
-
-    // cleanup
-    imgDrv.shutdown();
-}
 
     void runScript(const std::string& filename, const std::string& playerName, bool debug) {
         std::ifstream file(filename);
@@ -1595,29 +1511,14 @@ int main(int argc, char** argv) {
     Parser p(content);
     p.parse();
     Program prog = p.getProgram();
-    string player = "Scott";
+    string player = "Andrew";
 
     Debugger debugger;
     if (debug) {
         debugger.step();
     }
 
-    if (debug) {
-        debugger.step();
-    }
-
-    // ---------- ImageDriver integration ----------
-    ImageDriver imgDrv;
-    if (!imgDrv.init()) {
-        cerr << "Warning: ImageDriver failed to initialize. Image commands will error.\n";
-        // proceed without images or exit depending on your preference
-    }
-
-    // Pass the driver to the runtime so actions can call it
-    runProgram(prog, player, debugger, imgDrv.isInitialized() ? &imgDrv : nullptr);
-
-    // cleanup
-    imgDrv.shutdown();
+    runProgram(prog, player, debugger);
 
     return 0;
 }

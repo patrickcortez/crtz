@@ -1,13 +1,13 @@
 npc "Abigail";
 desc "Your sister, wearing a black dress.";
 
-int health = 60;
-int affection = 0;
+int health=60;
+int affection=0;
 
 node B1 {
     line "[Abigail]: You look tired from your journey.";
-    choice 1 : "[@You]: I'm fine." -> B2;
-    choice 2 : "[@You]: I'm hurt." -> B3;
+    choice 1 : "[@You]: I'm fine."->B2;
+    choice 2 : "[@You]: I'm hurt."->B3;
 }
 
 node B2 {
@@ -25,12 +25,15 @@ node B3 {
 
 node B4 {
     line "[Abigail]: Sit down, I will patch you up.";
-    set affection = affection + 5;
+    set affection=affection+5;
     end;
 }
 
 node B5 {
+    show "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     line "[Abigail]: You look scratched but fine.";
-    set affection = affection + 2;
+    set affection=affection+2;
     end;
 }
+
+

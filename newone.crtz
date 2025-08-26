@@ -1,0 +1,39 @@
+desc "A dense forest with tall trees";
+
+match penis = true;
+
+
+
+room forest {
+    desc "A dense forest with tall trees";
+    exit north castle;
+    exit east river;
+    item mushroom;
+}
+
+room castle {
+    desc "An ancient castle with tall towers";
+    exit south forest;
+    exit west dungeon;
+    npc dragon;
+}
+
+node explore {
+set currentRoom = 1;
+    show "You are in: ${currentRoom} and ${penis}",
+         "${currentRoom.description}";
+    
+    if (currentRoom.hasItem("sword")) {
+        line "You found a sword!";
+        goto fuck;
+        set hasSword = true;
+    }
+    
+    // More exploration logic...
+}
+
+node fuck{
+ show "You made it!";
+ display("assets/Add_a_subheading copy 2.bmp");
+ end;
+}
